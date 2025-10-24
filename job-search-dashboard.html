@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Search Dashboard - Maria Lopez</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { Search, MapPin, Briefcase, TrendingUp, Plus, X, Edit2, Save, Copy, Check } = lucide;
+
+        const JobSearchApp = () => {
+            const [selectedCategory, setSelectedCategory] = useState(null);
+            const [showCustomSearch, setShowCustomSearch] = useState(false);
+            const [customSearches, setCustomSearches] = useState([]);
+            const [copied, setCopied] = useState(false);
+
+            const [customForm, setCustomForm] = useState({
+                name: '',
+                jobTitles: [],
+                customJobTitle: '',
+                locations: [],
+                customLocation: '',
+                platforms: ['myworkdayjobs.com', 'jobs.lever.co', 'boards.greenhouse.io', 'icims.com'],
+                workMode: ['remote', 'hybrid']
+            });
+
+            // Load custom searches from localStorage
+            useEffect(() => {
+                const saved = localStorage.getItem('jobSearches');
+                if (saved) {
+                    setCustomSearches(JSON.parse(saved));
+                }
+            }, []);
+
+            // Save to localStorage whenever customSearches changes
+            useEffect(() => {
+                if (customSearches.length > 0) {
+                    localStorage.setItem('jobSearches', JSON.stringify(customSearches));
+                }
+            }, [customSearches]);
+
+            const predefinedJobTitles = [
+                'senior data analyst',
+                'senior marketing analyst',
+                'product analytics lead',
+                'data product owner',
+                'data product manager',
+                'digital insights manager',
+                'data strategy consultant',
+                'marketing science specialist',
+                'AI product manager'
+            ];
+
+            const predefinedLocations = [
+                'remote spain',
+                'spain remote',
+                'madrid remote',
+                'remote uk',
+                'uk remote',
+                'london remote',
+                'remote europe',
+                'europe remote'
+            ];
+
+            const platformOptions = [
+                { value: 'myworkdayjobs.com', label: 'Workday' },
+                { value: 'jobs.lever.co', label: 'Lever' },
+                { value: 'boards.greenhouse.io', label: 'Greenhouse' },
+                { value: 'icims.com', label: 'iCIMS' },
+                { value: 'careers-page.com', label: 'Careers Page' },
+                { value: 'applytojob.com', label: 'Apply to Job' }
+            ];
+
+            const generateQueryURL = (form) => {
+                const sites = form.platforms.map(p => `site:${p}`).join('+OR+');
+                const jobs = form.jobTitles.map(j => `"${j}"`).join('+OR+');
+                const locs = form.locations.length > 0
+                    ? '+AND+(' + form.locations.map(l => `"${l}"`).join('+OR+') + ')'
+                    : '';
+                const modes = form.workMode.length > 0
+                    ? '+AND+(' + form.workMode.join('+OR+') + ')'
+                    : '';
+
+                return `https://www.google.com/search?q=(${sites})+AND+(${jobs})${locs}${modes}`;
+            };
+
+            const addCustomJobTitle = () => {
+                if (customForm.customJobTitle.trim()) {
+                    setCustomForm({
+                        ...customForm,
+                        jobTitles: [...customForm.jobTitles, customForm.customJobTitle.trim()],
+                        customJobTitle: ''
+                    });
+                }
+            };
+
+            const addCustomLocation = () => {
+                if (customForm.customLocation.trim()) {
+                    setCustomForm({
+                        ...customForm,
+                        locations: [...customForm.locations, customForm.customLocation.trim()],
+                        customLocation: ''
+                    });
+                }
+            };
+
+            const removeJobTitle = (title) => {
+                setCustomForm({
+                    ...customForm,
+                    jobTitles: customForm.jobTitles.filter(t => t !== title)
+                });
+            };
+
+            const removeLocation = (loc) => {
+                setCustomForm({
+                    ...customForm,
+                    locations: customForm.locations.filter(l => l !== loc)
+                });
+            };
+
+            const togglePlatform = (platform) => {
+                if (customForm.platforms.includes(platform)) {
+                    setCustomForm({
+                        ...customForm,
+                        platforms: customForm.platforms.filter(p => p !== platform)
+                    });
+                } else {
+                    setCustomForm({
+                        ...customForm,
+                        platforms: [...customForm.platforms, platform]
+                    });
+                }
+            };
+
+            const saveCustomSearch = () => {
+                if (customForm.name && customForm.jobTitles.length > 0) {
+                    const newSearch = {
+                        name: customForm.name,
+                        url: generateQueryURL(customForm),
+                        description: `${customForm.jobTitles.length} job titles, ${customForm.locations.length} locations`,
+                        form: { ...customForm }
+                    };
+                    setCustomSearches([...customSearches, newSearch]);
+                    setShowCustomSearch(false);
+                    resetForm();
+                }
+            };
+
+            const deleteCustomSearch = (index) => {
+                const updated = customSearches.filter((_, i) => i !== index);
+                setCustomSearches(updated);
+                if (updated.length === 0) {
+                    localStorage.removeItem('jobSearches');
+                }
+            };
+
+            const resetForm = () => {
+                setCustomForm({
+                    name: '',
+                    jobTitles: [],
+                    customJobTitle: '',
+                    locations: [],
+                    customLocation: '',
+                    platforms: ['myworkdayjobs.com', 'jobs.lever.co', 'boards.greenhouse.io', 'icims.com'],
+                    workMode: ['remote', 'hybrid']
+                });
+            };
+
+            const copyToClipboard = (url) => {
+                navigator.clipboard.writeText(url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            };
+
+            const searches = {
+                priority: {
+                    icon: TrendingUp,
+                    color: 'bg-yellow-500',
+                    title: 'Top Priority Searches',
+                    description: 'Tus roles más importantes',
+                    queries: [
+                        {
+                            name: 'Senior Analytics Roles',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("senior+data+analyst"+OR+"senior+marketing+analyst"+OR+"senior+analytics")+AND+(remote+OR+hybrid)',
+                            description: 'Tu prioridad #1 - Roles senior en analytics'
+                        },
+                        {
+                            name: 'Remote Spain',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("senior+data+analyst"+OR+"senior+marketing+analyst"+OR+"product+analytics+lead"+OR+"data+product+owner")+AND+("remote+spain"+OR+"spain+remote"+OR+madrid+remote)',
+                            description: 'Ubicación preferida - Remote España'
+                        },
+                        {
+                            name: 'Product Analytics Lead',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("product+analytics+lead"+OR+"data+product+owner"+OR+"data+product+manager"+OR+"product+analyst")+AND+(remote+OR+hybrid)',
+                            description: 'Con tu experiencia NutrIA + MIT'
+                        }
+                    ]
+                },
+                roles: {
+                    icon: Briefcase,
+                    color: 'bg-blue-500',
+                    title: 'Role Categories',
+                    description: 'Búsquedas por tipo de rol',
+                    queries: [
+                        {
+                            name: 'Senior Data/Marketing Analyst',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("senior+data+analyst"+OR+"senior+marketing+analyst"+OR+"senior+analytics")+AND+(remote+OR+hybrid)',
+                            description: 'Roles senior analytics'
+                        },
+                        {
+                            name: 'Product Analytics / Data Product',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("product+analytics+lead"+OR+"data+product+owner"+OR+"data+product+manager"+OR+"product+analyst")+AND+(remote+OR+hybrid)',
+                            description: 'Con experiencia NutrIA'
+                        },
+                        {
+                            name: 'Insights & Strategy',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("digital+insights+manager"+OR+"data+strategy+consultant"+OR+"insights+manager")+AND+(remote+OR+hybrid)',
+                            description: 'Roles estratégicos'
+                        },
+                        {
+                            name: 'Marketing Science',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("marketing+science"+OR+"marketing+analyst"+OR+"marketing+analytics")+senior+AND+(remote+OR+hybrid)',
+                            description: 'Analytics + Marketing'
+                        },
+                        {
+                            name: 'AI Product Manager',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("AI+product+manager"+OR+"product+manager+AI"+OR+"AI+product")+AND+(analytics+OR+data)+AND+(remote+OR+hybrid)',
+                            description: 'MIT cert + NutrIA'
+                        }
+                    ]
+                },
+                location: {
+                    icon: MapPin,
+                    color: 'bg-green-500',
+                    title: 'Location Specific',
+                    description: 'Por ubicación',
+                    queries: [
+                        {
+                            name: '🇪🇸 Remote Spain',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("senior+data+analyst"+OR+"senior+marketing+analyst"+OR+"product+analytics+lead"+OR+"data+product+owner")+AND+("remote+spain"+OR+"spain+remote"+OR+madrid+remote)',
+                            description: 'Prioridad #1'
+                        },
+                        {
+                            name: '🇬🇧 Remote UK',
+                            url: 'https://www.google.com/search?q=(site:myworkdayjobs.com+OR+site:jobs.lever.co+OR+site:boards.greenhouse.io+OR+site:icims.com)+AND+("senior+data+analyst"+OR+"senior+marketing+analyst"+OR+"product+analytics+lead"+OR+"data+product+owner")+AND+("remote+uk"+OR+"uk+remote"+OR+"london+remote")',
+                            description: 'Prioridad #2'
+                        }
+                    ]
+                }
+            };
+
+            if (customSearches.length > 0) {
+                searches.custom = {
+                    icon: Edit2,
+                    color: 'bg-purple-500',
+                    title: 'My Custom Searches',
+                    description: 'Búsquedas personalizadas',
+                    queries: customSearches
+                };
+            }
+
+            const SearchCard = ({ query, isCustom = false, index }) => {
+                const IconComponent = isCustom ? () => React.createElement(lucide.Trash2, { size: 16 }) : null;
+
+                return (
+                    <div className="block p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all duration-200 group">
+                        <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                                    {query.name}
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1">{query.description}</p>
+                            </div>
+                            {isCustom && (
+                                <button
+                                    onClick={() => deleteCustomSearch(index)}
+                                    className="ml-2 p-1 text-red-400 hover:text-red-600 transition-colors"
+                                >
+                                    {React.createElement(lucide.X, { size: 16 })}
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            <a
+                                href={query.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
+                            >
+                                {React.createElement(lucide.Search, { size: 16 })}
+                                Buscar
+                            </a>
+                            <button
+                                onClick={() => copyToClipboard(query.url)}
+                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                                title="Copiar URL"
+                            >
+                                {copied ? React.createElement(lucide.Check, { size: 16 }) : React.createElement(lucide.Copy, { size: 16 })}
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            const CategorySection = ({ categoryKey, category }) => {
+                const isExpanded = selectedCategory === categoryKey;
+
+                return (
+                    <div className="mb-6">
+                        <button
+                            onClick={() => setSelectedCategory(isExpanded ? null : categoryKey)}
+                            className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:from-gray-100 hover:to-gray-200 transition-all duration-200"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`${category.color} p-2 rounded-lg`}>
+                                    {React.createElement(category.icon, { size: 24, color: 'white' })}
+                                </div>
+                                <div className="text-left">
+                                    <h2 className="font-bold text-lg text-gray-900">{category.title}</h2>
+                                    <p className="text-sm text-gray-600">{category.description}</p>
+                                </div>
+                            </div>
+                            <div className="text-gray-400">
+                                {isExpanded ? '▼' : '▶'}
+                            </div>
+                        </button>
+
+                        {isExpanded && (
+                            <div className="mt-3 space-y-3 pl-4">
+                                {category.queries.map((query, index) => (
+                                    <SearchCard
+                                        key={index}
+                                        query={query}
+                                        isCustom={categoryKey === 'custom'}
+                                        index={index}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="text-center mb-8">
+                            <div className="inline-block p-3 bg-blue-500 rounded-full mb-4">
+                                {React.createElement(lucide.TrendingUp, { size: 32, color: 'white' })}
+                            </div>
+                            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                                Job Search Dashboard
+                            </h1>
+                            <p className="text-gray-600">
+                                Búsquedas optimizadas en job boards
+                            </p>
+                        </div>
+
+                        <div className="mb-6">
+                            <button
+                                onClick={() => setShowCustomSearch(!showCustomSearch)}
+                                className="w-full flex items-center justify-center gap-2 p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg"
+                            >
+                                {React.createElement(lucide.Plus, { size: 20 })}
+                                Crear Búsqueda Personalizada
+                            </button>
+                        </div>
+
+                        {showCustomSearch && (
+                            <div className="bg-white rounded-xl shadow-xl p-6 mb-8 border-2 border-purple-200">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-900">Nueva Búsqueda</h2>
+                                    <button onClick={() => setShowCustomSearch(false)}>
+                                        {React.createElement(lucide.X, { size: 24, className: 'text-gray-400 hover:text-gray-600' })}
+                                    </button>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Nombre de la búsqueda
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={customForm.name}
+                                        onChange={(e) => setCustomForm({ ...customForm, name: e.target.value })}
+                                        placeholder="Ej: Senior Analytics Spain"
+                                        className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Job Titles
+                                    </label>
+                                    <div className="flex gap-2 mb-3">
+                                        <select
+                                            onChange={(e) => {
+                                                if (e.target.value && !customForm.jobTitles.includes(e.target.value)) {
+                                                    setCustomForm({
+                                                        ...customForm,
+                                                        jobTitles: [...customForm.jobTitles, e.target.value]
+                                                    });
+                                                }
+                                                e.target.value = '';
+                                            }}
+                                            className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                                        >
+                                            <option value="">Seleccionar predefinido...</option>
+                                            {predefinedJobTitles.map((title, i) => (
+                                                <option key={i} value={title}>{title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-2 mb-3">
+                                        <input
+                                            type="text"
+                                            value={customForm.customJobTitle}
+                                            onChange={(e) => setCustomForm({ ...customForm, customJobTitle: e.target.value })}
+                                            onKeyPress={(e) => e.key === 'Enter' && addCustomJobTitle()}
+                                            placeholder="O escribe un job title custom..."
+                                            className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                                        />
+                                        <button
+                                            onClick={addCustomJobTitle}
+                                            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
+                                        >
+                                            {React.createElement(lucide.Plus, { size: 20 })}
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {customForm.jobTitles.map((title, i) => (
+                                            <span key={i} className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                                                {title}
+                                                <button onClick={() => removeJobTitle(title)}>
+                                                    {React.createElement(lucide.X, { size: 16 })}
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Locations (opcional)
+                                    </label>
+                                    <div className="flex gap-2 mb-3">
+                                        <select
+                                            onChange={(e) => {
+                                                if (e.target.value && !customForm.locations.includes(e.target.value)) {
+                                                    setCustomForm({
+                                                        ...customForm,
+                                                        locations: [...customForm.locations, e.target.value]
+                                                    });
+                                                }
+                                                e.target.value = '';
+                                            }}
+                                            className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                                        >
+                                            <option value="">Seleccionar ubicación...</option>
+                                            {predefinedLocations.map((loc, i) => (
+                                                <option key={i} value={loc}>{loc}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-2 mb-3">
+                                        <input
+                                            type="text"
+                                            value={customForm.customLocation}
+                                            onChange={(e) => setCustomForm({ ...customForm, customLocation: e.target.value })}
+                                            onKeyPress={(e) => e.key === 'Enter' && addCustomLocation()}
+                                            placeholder="O escribe una ubicación custom..."
+                                            className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+                                        />
+                                        <button
+                                            onClick={addCustomLocation}
+                                            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+                                        >
+                                            {React.createElement(lucide.Plus, { size: 20 })}
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {customForm.locations.map((loc, i) => (
+                                            <span key={i} className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                                                {loc}
+                                                <button onClick={() => removeLocation(loc)}>
+                                                    {React.createElement(lucide.X, { size: 16 })}
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Plataformas
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {platformOptions.map((platform) => (
+                                            <label key={platform.value} className="flex items-center gap-2 p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={customForm.platforms.includes(platform.value)}
+                                                    onChange={() => togglePlatform(platform.value)}
+                                                    className="w-4 h-4"
+                                                />
+                                                <span className="text-sm">{platform.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Work Mode
+                                    </label>
+                                    <div className="flex gap-4">
+                                        <label className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={customForm.workMode.includes('remote')}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setCustomForm({ ...customForm, workMode: [...customForm.workMode, 'remote'] });
+                                                    } else {
+                                                        setCustomForm({ ...customForm, workMode: customForm.workMode.filter(m => m !== 'remote') });
+                                                    }
+                                                }}
+                                                className="w-4 h-4"
+                                            />
+                                            <span className="text-sm">Remote</span>
+                                        </label>
+                                        <label className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={customForm.workMode.includes('hybrid')}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setCustomForm({ ...customForm, workMode: [...customForm.workMode, 'hybrid'] });
+                                                    } else {
+                                                        setCustomForm({ ...customForm, workMode: customForm.workMode.filter(m => m !== 'hybrid') });
+                                                    }
+                                                }}
+                                                className="w-4 h-4"
+                                            />
+                                            <span className="text-sm">Hybrid</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {customForm.jobTitles.length > 0 && (
+                                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Preview URL
+                                        </label>
+                                        <div className="text-xs text-gray-600 break-all">
+                                            {generateQueryURL(customForm)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={saveCustomSearch}
+                                    disabled={!customForm.name || customForm.jobTitles.length === 0}
+                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {React.createElement(lucide.Save, { size: 20 })}
+                                    Guardar Búsqueda
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-4 gap-4 mb-8">
+                            <div className="bg-white rounded-lg p-4 border-2 border-yellow-200">
+                                <div className="text-2xl font-bold text-yellow-600">3</div>
+                                <div className="text-sm text-gray-600">Priority</div>
+                            </div>
+                            <div className="bg-white rounded-lg p-4 border-2 border-blue-200">
+                                <div className="text-2xl font-bold text-blue-600">5</div>
+                                <div className="text-sm text-gray-600">Roles</div>
+                            </div>
+                            <div className="bg-white rounded-lg p-4 border-2 border-green-200">
+                                <div className="text-2xl font-bold text-green-600">2</div>
+                                <div className="text-sm text-gray-600">Locations</div>
+                            </div>
+                            <div className="bg-white rounded-lg p-4 border-2 border-purple-200">
+                                <div className="text-2xl font-bold text-purple-600">{customSearches.length}</div>
+                                <div className="text-sm text-gray-600">Custom</div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-lg p-6">
+                            {Object.entries(searches).map(([key, category]) => (
+                                <CategorySection key={key} categoryKey={key} category={category} />
+                            ))}
+                        </div>
+
+                        <div className="mt-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl p-6 text-white">
+                            <h3 className="font-bold text-lg mb-3">💡 Tips de Uso</h3>
+                            <ul className="space-y-2 text-sm">
+                                <li>✅ Crea búsquedas personalizadas para combinaciones específicas</li>
+                                <li>✅ Usa el botón de copiar para crear Google Alerts</li>
+                                <li>✅ Revisa cada 2-3 días para nuevas ofertas</li>
+                                <li>✅ Tus búsquedas se guardan automáticamente en tu navegador</li>
+                            </ul>
+                        </div>
+
+                        <div className="mt-6 text-center text-sm text-gray-500">
+                            <p>Meta semanal: 8-10 aplicaciones | Prioriza Score 15-17/17</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<JobSearchApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
