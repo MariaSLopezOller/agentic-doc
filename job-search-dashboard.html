@@ -141,9 +141,9 @@
         // Funciones de utilidad
         function generateQueryURL(form) {
             const sites = form.platforms.map(p => `site:${p}`).join('+OR+');
-            const jobs = form.jobTitles.map(j => `"${j}"`).join('+OR+');
+            const jobs = form.jobTitles.map(j => `"${j.replace(/ /g, '+')}"`).join('+OR+');
             const locs = form.locations.length > 0
-                ? '+AND+(' + form.locations.map(l => `"${l}"`).join('+OR+') + ')'
+                ? '+AND+(' + form.locations.map(l => `"${l.replace(/ /g, '+')}"`).join('+OR+') + ')'
                 : '';
             const modes = form.workMode.length > 0
                 ? '+AND+(' + form.workMode.join('+OR+') + ')'
